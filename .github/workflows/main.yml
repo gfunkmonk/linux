@@ -80,16 +80,22 @@ jobs:
 
       - name: 🅲🅲🅰🅲🅷🅴 🅴🅽🆅🅸🆁🅾🅽🅼🅴🅽🆃 🆅🅰🆁🅸🅰🅱🅻🅴🆂 
         run: |
+          # Setup CCACHE Dir first
+          sudo mkdir -p /mnt/ccache
+          sudo chown -R $USER:$USER /mnt/ccache
+          echo "CCACHE_DIR=/mnt/ccache" >> $GITHUB_ENV
+          
+          # Set CCACHE environment variables for kernel build optimization
           cat >> $GITHUB_ENV << 'EOF'
           CCACHE_SLOPPINESS=file_macro,locale,time_macros
           CCACHE_NOHASHDIR=true
           CCACHE_COMPRESS=1
-          CCACHE_COMPRESSLEVEL=9
+          CCACHE_COMPRESSLEVEL=6
           CCACHE_DEPEND=1
           EOF
           echo "CCACHE Environment set!"
           
-          # Set Compiler
+          # Set Compiler to use ccache
           if [ "${{ inputs.arch }}" = "arm64" ]; then
             echo "CC=ccache aarch64-linux-gnu-gcc" >> $GITHUB_ENV
             echo "CXX=ccache aarch64-linux-gnu-g++" >> $GITHUB_ENV
@@ -101,24 +107,26 @@ jobs:
             echo "CXX=ccache g++" >> $GITHUB_ENV
           fi
           echo "CCACHE Compilers set!"
-
-          # Setup CCACHE Dir
-          sudo mkdir -p /mnt/ccache
-          sudo chown -R $USER:$USER /mnt/ccache
-          echo "CCACHE_DIR=/mnt/ccache" >> $GITHUB_ENV
-          echo "CCACHE Dir Set!"
           df -h
 
       - name: Enable CCACHE
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          create-symlink: 'true'
           key: kernel-build-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('linux/Makefile', 'linux/arch/*/Makefile', 'linux/.config') }}
           max-size: '10000MB'
           restore-keys: |
             kernel-build-${{ runner.os }}-${{ inputs.arch }}-
             kernel-build-${{ runner.os }}-
-          verbose: 1
+          verbose: 2
+          save: true
+          
+      - name: Verify CCACHE setup
+        run: |
+          echo "CCACHE_DIR is set to: $CCACHE_DIR"
+          echo "=== CCACHE Configuration ==="
+          ccache -p
+          echo "=== CCACHE Statistics (before build) ==="
+          ccache -s
 
       - name: Set up build environment variables
         run: |
@@ -202,6 +210,13 @@ jobs:
         env:
           ARCH: ${{ env.ARCH }}
           CROSS_COMPILE: ${{ env.CROSS_COMPILE }}
+
+      - name: Show ccache statistics
+        run: |
+          echo "=== CCACHE Statistics ==="
+          ccache -s
+          echo "=== CCACHE Configuration ==="
+          ccache -p
 
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
