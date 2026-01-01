@@ -112,7 +112,7 @@ jobs:
       - name: Enable CCACHE
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: kernel-build-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('linux/Makefile', 'linux/arch/*/Makefile', 'linux/.config') }}
+          key: kernel-build-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('Makefile', 'arch/*/Makefile', '.config') }}
           max-size: '10000MB'
           restore-keys: |
             kernel-build-${{ runner.os }}-${{ inputs.arch }}-
