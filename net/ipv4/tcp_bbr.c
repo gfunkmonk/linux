@@ -827,8 +827,12 @@ static void bbr_update_ack_aggregation(struct sock *sk,
 	/* Compute how many packets we expected to be delivered over epoch. */
 	epoch_us = tcp_stamp_us_delta(tp->delivered_mstamp,
 				      bbr->ack_epoch_mstamp);
-	expected_acked = (u64)bbr_bw(sk) * epoch_us;
-	do_div(expected_acked, BW_UNIT);
+	{
+		u64 bw_epoch = (u64)bbr_bw(sk) * epoch_us;
+
+		do_div(bw_epoch, BW_UNIT);
+		expected_acked = bw_epoch;
+	}
 
 	/* Reset the aggregation epoch if ACK rate is below expected rate or
 	 * significantly large no. of ack received since epoch (potentially
