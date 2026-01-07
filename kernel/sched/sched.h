@@ -1002,6 +1002,7 @@ struct rq {
 
 	struct callback_head	*balance_callback;
 
+
 	unsigned char		nohz_idle_balance;
 	unsigned char		idle_balance;
 
@@ -1829,6 +1830,7 @@ extern int group_balance_cpu(struct sched_group *sg);
 #ifdef CONFIG_SCHED_DEBUG
 void update_sched_domain_debugfs(void);
 void dirty_sched_domain_sysctl(int cpu);
+
 #else
 static inline void update_sched_domain_debugfs(void)
 {
@@ -1836,6 +1838,7 @@ static inline void update_sched_domain_debugfs(void)
 static inline void dirty_sched_domain_sysctl(int cpu)
 {
 }
+
 #endif
 
 extern int sched_update_scaling(void);

@@ -217,7 +217,7 @@ int fnic_fw_reset_handler(struct fnic *fnic)
 
 	/* wait for io cmpl */
 	while (atomic_read(&fnic->in_flight))
-		schedule_timeout(msecs_to_jiffies(1));
+		schedule_msec_hrtimeout((1));
 
 	spin_lock_irqsave(&fnic->wq_copy_lock[0], flags);
 
@@ -1405,6 +1405,7 @@ cleanup_scsi_cmd:
 		      "fnic_cleanup_io: tag:0x%x : sc:0x%p duration = %lu DID_TRANSPORT_DISRUPTED\n",
 		      tag, sc, jiffies - start_time);
 
+
 	if (atomic64_read(&fnic->io_cmpl_skip))
 		atomic64_dec(&fnic->io_cmpl_skip);
 	else
@@ -1609,6 +1610,7 @@ static bool fnic_rport_abort_io_iter(struct scsi_cmnd *sc, void *data,
 	if (fnic_priv(sc)->flags & FNIC_DEVICE_RESET) {
 		atomic64_inc(&reset_stats->device_reset_terminates);
 		abt_tag |= FNIC_TAG_DEV_RST;
+
 	}
 	FNIC_SCSI_DBG(KERN_DEBUG, fnic->lport->host,
 		      "fnic_rport_exch_reset dev rst sc 0x%p\n", sc);
@@ -1674,9 +1676,11 @@ static void fnic_rport_exch_reset(struct fnic *fnic, u32 port_id)
 
 void fnic_terminate_rport_io(struct fc_rport *rport)
 {
+
 	struct fc_rport_libfc_priv *rdata;
 	struct fc_lport *lport;
 	struct fnic *fnic;
+
 
 	if (!rport) {
 		printk(KERN_ERR "fnic_terminate_rport_io: rport is NULL\n");
@@ -1705,6 +1709,7 @@ void fnic_terminate_rport_io(struct fc_rport *rport)
 		return;
 
 	fnic_rport_exch_reset(fnic, rport->port_id);
+
 }
 
 /*
@@ -2003,6 +2008,7 @@ struct fnic_pending_aborts_iter_data {
 	int ret;
 };
 
+
 static bool fnic_pending_aborts_iter(struct scsi_cmnd *sc,
 				     void *data, bool reserved)
 {
@@ -2013,7 +2019,9 @@ static bool fnic_pending_aborts_iter(struct scsi_cmnd *sc,
 	struct fnic_io_req *io_req;
 	spinlock_t *io_lock;
 	unsigned long flags;
+
 	struct scsi_lun fc_lun;
+
 	DECLARE_COMPLETION_ONSTACK(tm_done);
 	enum fnic_ioreq_state old_ioreq_state;
 
@@ -2101,6 +2109,7 @@ static bool fnic_pending_aborts_iter(struct scsi_cmnd *sc,
 	fnic_priv(sc)->flags |= FNIC_IO_INTERNAL_TERM_ISSUED;
 
 	wait_for_completion_timeout(&tm_done, msecs_to_jiffies
+
 				    (fnic->config.ed_tov));
 
 	/* Recheck cmd state to check if it is now aborted */
@@ -2172,7 +2181,7 @@ static int fnic_clean_pending_aborts(struct fnic *fnic,
 		ret = iter_data.ret;
 		goto clean_pending_aborts_end;
 	}
-	schedule_timeout(msecs_to_jiffies(2 * fnic->config.ed_tov));
+	schedule_msec_hrtimeout((2 * fnic->config.ed_tov));
 
 	/* walk again to check, if IOs are still pending in fw */
 	if (fnic_is_abts_pending(fnic, lr_sc))
@@ -2672,6 +2681,7 @@ call_fc_exch_mgr_reset:
 
 static bool fnic_abts_pending_iter(struct scsi_cmnd *sc, void *data,
 				   bool reserved)
+
 {
 	struct fnic_pending_aborts_iter_data *iter_data = data;
 	struct fnic *fnic = iter_data->fnic;
@@ -2679,6 +2689,8 @@ static bool fnic_abts_pending_iter(struct scsi_cmnd *sc, void *data,
 	struct fnic_io_req *io_req;
 	spinlock_t *io_lock;
 	unsigned long flags;
+
+
 
 	/*
 	 * ignore this lun reset cmd or cmds that do not belong to
@@ -2694,6 +2706,7 @@ static bool fnic_abts_pending_iter(struct scsi_cmnd *sc, void *data,
 
 	io_req = fnic_priv(sc)->io_req;
 	if (!io_req) {
+
 		spin_unlock_irqrestore(io_lock, flags);
 		return true;
 	}

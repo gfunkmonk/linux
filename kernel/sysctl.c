@@ -129,6 +129,10 @@ static enum sysctl_writes_mode sysctl_writes_strict = SYSCTL_WRITES_STRICT;
 int sysctl_legacy_va_layout;
 #endif
 
+
+
+
+
 #ifdef CONFIG_COMPACTION
 /* min_extfrag_threshold is SYSCTL_ZERO */;
 static const int max_extfrag_threshold = 1000;
@@ -1601,6 +1605,7 @@ static struct ctl_table kern_table[] = {
 		.extra2		= SYSCTL_FOUR,
 	},
 #endif /* CONFIG_NUMA_BALANCING */
+
 	{
 		.procname	= "panic",
 		.data		= &panic_timeout,
