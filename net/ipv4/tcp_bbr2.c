@@ -534,9 +534,11 @@ static void bbr_debug(struct sock *sk, u32 acked,
 		if (sk->sk_family == AF_INET)
 			snprintf(addr, sizeof(addr), "%pI4:%u",
 				 &inet_sk(sk)->inet_daddr, dport);
+#if IS_ENABLED(CONFIG_IPV6)
 		else if (sk->sk_family == AF_INET6)
 			snprintf(addr, sizeof(addr), "%pI6:%u",
 				 &sk->sk_v6_daddr, dport);
+#endif
 
 		WARN_ONCE(1,
 			"BBR %s cwnd alert: %u "
