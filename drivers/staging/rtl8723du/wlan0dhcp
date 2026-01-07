@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Script to configure DHCP for wlan0 interface
+
+set -e
+
+INTERFACE="wlan0"
+IFCFG_SOURCE="ifcfg-wlan0"
+IFCFG_DEST="/etc/sysconfig/network-scripts/ifcfg-$INTERFACE"
+
+# Kill existing dhclient process for wlan0
+echo "Stopping existing dhclient processes for $INTERFACE..."
+pkill -f "dhclient $INTERFACE" 2>/dev/null || true
+
+# Copy interface configuration if it exists
+if [ -f "$IFCFG_SOURCE" ]; then
+    echo "Copying interface configuration..."
+    cp "$IFCFG_SOURCE" "$IFCFG_DEST"
+fi
+
+# Start dhclient
+echo "Starting dhclient for $INTERFACE..."
+dhclient "$INTERFACE"
+
+# Get and display IP address
+sleep 2
+IP_ADDR=$(ip addr show "$INTERFACE" | awk '/inet / {print $2}' | cut -d/ -f1)
+
+# Clean up configuration file
+if [ -f "$IFCFG_DEST" ]; then
+    rm -f "$IFCFG_DEST"
+fi
+
+if [ -n "$IP_ADDR" ]; then
+    echo "Successfully obtained IP: $IP_ADDR"
+else
+    echo "Warning: No IP address obtained"
+    exit 1
+fi
+

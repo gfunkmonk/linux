@@ -1,0 +1,16 @@
+#/bin/bash
+
+# Script to unload RTL wireless kernel modules
+
+set -e
+
+modules=(8192cu 8192ce 8192du 8192de 8723du)
+
+for module in "${modules[@]}"; do
+    if lsmod | grep -q "^$module "; then
+        echo "Unloading $module..."
+        rmmod "$module" 2>/dev/null || echo "Warning: Failed to unload $module"
+    fi
+done
+
+echo "Done."

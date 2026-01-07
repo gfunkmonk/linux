@@ -1,0 +1,15 @@
+# Kernel module build artifacts
+*.o
+*.ko
+*.mod
+*.mod.*
+.*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Module.markers
+*.dwo
+
+# Backup files
+*~
+*.bak
