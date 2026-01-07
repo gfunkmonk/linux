@@ -2435,6 +2435,9 @@ EXPORT_SYMBOL(schedule_msec_hrtimeout);
 
 #define USECS_PER_SEC 1000000
 
+int __read_mostly hrtimer_granularity_us = 100;
+int __read_mostly hrtimeout_min_us = 500;
+
 static inline long schedule_usec_hrtimeout(long timeout)
 {
 	struct hrtimer_sleeper t;
@@ -2471,9 +2474,6 @@ static inline long schedule_usec_hrtimeout(long timeout)
 	timeout = ktime_to_us(expires);
 	return timeout < 0 ? 0 : timeout;
 }
-
-int __read_mostly hrtimer_granularity_us = 100;
-int __read_mostly hrtimeout_min_us = 500;
 
 long __sched schedule_min_hrtimeout(void)
 {
