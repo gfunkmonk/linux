@@ -1,4 +1,5 @@
 DEBUG_CFLAGS	:=
+DEBUG_RUSTFLAGS	:=
 debug-flags-y	:= -g
 
 ifdef CONFIG_DEBUG_INFO_SPLIT
@@ -10,6 +11,12 @@ debug-flags-$(CONFIG_DEBUG_INFO_DWARF5)	+= -gdwarf-5
 ifeq ($(CONFIG_CC_IS_CLANG)$(CONFIG_AS_IS_GNU),yy)
 # Clang does not pass -g or -gdwarf-* option down to GAS.
 # Add -Wa, prefix to explicitly specify the flags.
+ifdef CONFIG_DEBUG_INFO_REDUCED
+DEBUG_RUSTFLAGS += -Cdebuginfo=1
+else
+DEBUG_RUSTFLAGS += -Cdebuginfo=2
+endif
+
 KBUILD_AFLAGS	+= $(addprefix -Wa$(comma), $(debug-flags-y))
 endif
 DEBUG_CFLAGS	+= $(debug-flags-y)
@@ -30,3 +37,6 @@ endif
 
 KBUILD_CFLAGS	+= $(DEBUG_CFLAGS)
 export DEBUG_CFLAGS
+
+KBUILD_RUSTFLAGS += $(DEBUG_RUSTFLAGS)
+export DEBUG_RUSTFLAGS

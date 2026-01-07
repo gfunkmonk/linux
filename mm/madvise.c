@@ -714,12 +714,9 @@ static int madvise_free_pte_range(pmd_t *pmd, unsigned long addr,
 		mark_page_lazyfree(page);
 	}
 out:
-	if (nr_swap) {
-		if (current->mm == mm)
-			sync_mm_rss(mm);
-
+	if (nr_swap)
 		add_mm_counter(mm, MM_SWAPENTS, nr_swap);
-	}
+
 	arch_leave_lazy_mmu_mode();
 	pte_unmap_unlock(orig_pte, ptl);
 	cond_resched();

@@ -356,6 +356,12 @@ config HAVE_RSEQ
 	  This symbol should be selected by an architecture if it
 	  supports an implementation of restartable sequences.
 
+config HAVE_RUST
+	bool
+	help
+	  This symbol should be selected by an architecture if it
+	  supports Rust.
+
 config HAVE_FUNCTION_ARG_ACCESS_API
 	bool
 	help
@@ -1396,6 +1402,9 @@ config ARCH_HAS_ELFCORE_COMPAT
 	bool
 
 config ARCH_HAS_PARANOID_L1D_FLUSH
+	bool
+
+config ARCH_PCP_RSS_USE_CPUMASK
 	bool
 
 config DYNAMIC_SIGFRAME

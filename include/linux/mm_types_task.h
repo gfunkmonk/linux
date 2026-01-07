@@ -12,6 +12,7 @@
 #include <linux/threads.h>
 #include <linux/atomic.h>
 #include <linux/cpumask.h>
+#include <linux/cache.h>
 
 #include <asm/page.h>
 
@@ -43,23 +44,51 @@ struct vmacache {
 enum {
 	MM_FILEPAGES,	/* Resident file mapping pages */
 	MM_ANONPAGES,	/* Resident anonymous pages */
-	MM_SWAPENTS,	/* Anonymous swap entries */
 	MM_SHMEMPAGES,	/* Resident shared memory pages */
+	MM_SWAPENTS,	/* Anonymous swap entries */
 	NR_MM_COUNTERS
 };
-
-#if USE_SPLIT_PTE_PTLOCKS && defined(CONFIG_MMU)
-#define SPLIT_RSS_COUNTING
-/* per-thread cached information, */
-struct task_rss_stat {
-	int events;	/* for synchronization threshold */
-	int count[NR_MM_COUNTERS];
-};
-#endif /* USE_SPLIT_PTE_PTLOCKS */
 
 struct mm_rss_stat {
 	atomic_long_t count[NR_MM_COUNTERS];
 };
+
+struct mm_rss_cache {
+	/*
+	 * CPU local only variables, hot path for RSS caching. Readonly for other CPUs.
+	 */
+	unsigned long in_use;
+	long count[NR_MM_COUNTERS];
+
+	/* Avoid false sharing when other CPUs collect RSS counter */
+	struct mm_struct *mm ____cacheline_aligned;
+	/* Avoid ABA problem and RSS being accounted for wrong mm */
+	unsigned long sync_count;
+};
+
+/* lowest bit of *mm is never used, so use it as a syncing flag */
+#define RSS_CACHE_MM_SYNCING_MASK 1UL
+
+/* mark the mm as being synced on that cache */
+static __always_inline struct mm_struct *__pcp_rss_mm_mark(struct mm_struct *mm)
+{
+	unsigned long val = (unsigned long)mm;
+
+	val |= RSS_CACHE_MM_SYNCING_MASK;
+
+	return (struct mm_struct *) val;
+}
+
+static __always_inline struct mm_struct *__pcp_rss_mm_unmark(struct mm_struct *mm)
+{
+	unsigned long val = (unsigned long)mm;
+
+	val &= ~RSS_CACHE_MM_SYNCING_MASK;
+
+	return (struct mm_struct *) val;
+}
+
+void switch_pcp_rss_cache_no_irq(struct mm_struct *next_mm);
 
 struct page_frag {
 	struct page *page;

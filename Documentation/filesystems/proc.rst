@@ -224,13 +224,6 @@ memory usage. Its seven fields are explained in Table 1-3.  The stat file
 contains detailed information about the process itself.  Its fields are
 explained in Table 1-4.
 
-(for SMP CONFIG users)
-
-For making accounting scalable, RSS related information are handled in an
-asynchronous manner and the value may not be very precise. To see a precise
-snapshot of a moment, you can see /proc/<pid>/smaps file and scan page table.
-It's slow but very precise.
-
 .. table:: Table 1-2: Contents of the status files (as of 4.19)
 
  ==========================  ===================================================

@@ -379,13 +379,14 @@ static bool damon_reclaim_initialized;
 static int enabled_store(const char *val,
 		const struct kernel_param *kp)
 {
-	int rc = param_set_bool(val, kp);
-
-	if (rc < 0)
-		return rc;
+	int rc;
 
 	/* system_wq might not initialized yet */
 	if (!damon_reclaim_initialized)
+		return -EINVAL;
+
+	rc = param_set_bool(val, kp);
+	if (rc < 0)
 		return rc;
 
 	if (enabled)

@@ -176,52 +176,245 @@ void mm_trace_rss_stat(struct mm_struct *mm, int member, long count)
 	trace_rss_stat(mm, member, count);
 }
 
-#if defined(SPLIT_RSS_COUNTING)
+static DEFINE_PER_CPU_SHARED_ALIGNED(struct mm_rss_cache, cpu_rss_cache);
 
-void sync_mm_rss(struct mm_struct *mm)
+/*
+ * get_mm_counter and get_mm_rss try to read the RSS cache of each
+ * CPU that cached target mm. If the cache is flushed while being read,
+ * skip it. May lead to rare and little bit of accuracy loss, but flushed
+ * cache will surely be accounted in the next read.
+ */
+unsigned long get_mm_counter(struct mm_struct *mm, int member)
 {
-	int i;
+	int cpu;
+	long ret, update, sync_count;
+	const struct cpumask *mm_mask;
 
-	for (i = 0; i < NR_MM_COUNTERS; i++) {
-		if (current->rss_stat.count[i]) {
-			add_mm_counter(mm, i, current->rss_stat.count[i]);
-			current->rss_stat.count[i] = 0;
-		}
+	ret = atomic_long_read(&mm->rss_stat.count[member]);
+
+	if (IS_ENABLED(CONFIG_ARCH_PCP_RSS_USE_CPUMASK))
+		mm_mask = mm_cpumask(mm);
+	else
+		mm_mask = cpu_possible_mask;
+
+	for_each_cpu(cpu, mm_mask) {
+		if (READ_ONCE(per_cpu(cpu_rss_cache.mm, cpu)) != mm)
+			continue;
+		sync_count = READ_ONCE(per_cpu(cpu_rss_cache.sync_count, cpu));
+		/* see smp_mb in switch_pcp_rss_cache_no_irq */
+		smp_rmb();
+
+		update = READ_ONCE(per_cpu(cpu_rss_cache.count[member], cpu));
+
+		/* same as above */
+		smp_rmb();
+		if (READ_ONCE(per_cpu(cpu_rss_cache.sync_count, cpu)) == sync_count &&
+		    READ_ONCE(per_cpu(cpu_rss_cache.mm, cpu)) == mm)
+			ret += update;
 	}
-	current->rss_stat.events = 0;
+
+	if (ret < 0)
+		ret = 0;
+
+	return ret;
+}
+
+/* see comment for get_mm_counter */
+unsigned long get_mm_rss(struct mm_struct *mm)
+{
+	int cpu;
+	long ret, update, sync_count;
+	const struct cpumask *mm_mask;
+
+	ret = atomic_long_read(&mm->rss_stat.count[MM_FILEPAGES]),
+	    + atomic_long_read(&mm->rss_stat.count[MM_ANONPAGES]),
+	    + atomic_long_read(&mm->rss_stat.count[MM_SHMEMPAGES]);
+
+	if (IS_ENABLED(CONFIG_ARCH_PCP_RSS_USE_CPUMASK))
+		mm_mask = mm_cpumask(mm);
+	else
+		mm_mask = cpu_possible_mask;
+
+	for_each_cpu(cpu, mm_mask) {
+		if (READ_ONCE(per_cpu(cpu_rss_cache.mm, cpu)) != mm)
+			continue;
+		sync_count = READ_ONCE(per_cpu(cpu_rss_cache.sync_count, cpu));
+		/* see smp_mb in switch_pcp_rss_cache_no_irq */
+		smp_rmb();
+
+		/* Reads MM_FILEPAGES, MM_ANONPAGES, MM_SHMEMPAGES */
+		for (int i = MM_FILEPAGES; i < MM_SWAPENTS; i++)
+			update += READ_ONCE(per_cpu(cpu_rss_cache.count[i], cpu));
+
+		/* same as above */
+		smp_rmb();
+		if (READ_ONCE(per_cpu(cpu_rss_cache.sync_count, cpu)) == sync_count &&
+		    READ_ONCE(per_cpu(cpu_rss_cache.mm, cpu)) == mm)
+			ret += update;
+	}
+
+	if (ret < 0)
+		ret = 0;
+
+	return ret;
+}
+
+/* flush the rss cache of current CPU with IRQ disabled, and switch to new mm */
+void switch_pcp_rss_cache_no_irq(struct mm_struct *next_mm)
+{
+	long count;
+	struct mm_struct *cpu_mm;
+
+	cpu_mm = this_cpu_read(cpu_rss_cache.mm);
+	if (cpu_mm == next_mm)
+		return;
+
+	/*
+	 * `in_use` counter is hold with preempt disabled, if non-zero, this would be a
+	 * interrupt switching the mm, just ignore it.
+	 */
+	if (this_cpu_read(cpu_rss_cache.in_use))
+		return;
+
+	if (cpu_mm == NULL)
+		goto commit_done;
+
+	/* Arch will take care of cache invalidation */
+	if (!IS_ENABLED(CONFIG_ARCH_PCP_RSS_USE_CPUMASK)) {
+		/* Race with check_discard_rss_cache */
+		if (cpu_mm != cmpxchg(this_cpu_ptr(&cpu_rss_cache.mm), cpu_mm,
+				      __pcp_rss_mm_mark(cpu_mm)))
+			goto commit_done;
+	}
+
+	for (int i = 0; i < NR_MM_COUNTERS; i++) {
+		count = this_cpu_read(cpu_rss_cache.count[i]);
+		if (count)
+			add_mm_counter(cpu_mm, i, count);
+	}
+
+commit_done:
+	for (int i = 0; i < NR_MM_COUNTERS; i++)
+		this_cpu_write(cpu_rss_cache.count[i], 0);
+
+	/*
+	 * For remote reading in get_mm_{rss,counter},
+	 * ensure new mm and sync counter have zero'ed counters
+	 */
+	smp_wmb();
+	this_cpu_write(cpu_rss_cache.mm, next_mm);
+	this_cpu_inc(cpu_rss_cache.sync_count);
 }
 
 static void add_mm_counter_fast(struct mm_struct *mm, int member, int val)
 {
-	struct task_struct *task = current;
+	/*
+	 * Disable preempt so task is pinned, and the mm is pinned on this CPU
+	 * since caller must be holding a reference.
+	 */
+	preempt_disable();
+	this_cpu_inc(cpu_rss_cache.in_use);
 
-	if (likely(task->mm == mm))
-		task->rss_stat.count[member] += val;
-	else
+	if (likely(mm == this_cpu_read(cpu_rss_cache.mm))) {
+		this_cpu_add(cpu_rss_cache.count[member], val);
+		this_cpu_dec(cpu_rss_cache.in_use);
+		/* Avoid the resched checking oveahead for fast path */
+		preempt_enable_no_resched();
+	} else {
+		this_cpu_dec(cpu_rss_cache.in_use);
+		preempt_enable_no_resched();
 		add_mm_counter(mm, member, val);
+	}
 }
+
 #define inc_mm_counter_fast(mm, member) add_mm_counter_fast(mm, member, 1)
 #define dec_mm_counter_fast(mm, member) add_mm_counter_fast(mm, member, -1)
 
-/* sync counter once per 64 page faults */
-#define TASK_RSS_EVENTS_THRESH	(64)
-static void check_sync_rss_stat(struct task_struct *task)
+#define NAMED_ARRAY_INDEX(x)	[x] = __stringify(x)
+static const char * const resident_page_types[] = {
+	NAMED_ARRAY_INDEX(MM_FILEPAGES),
+	NAMED_ARRAY_INDEX(MM_ANONPAGES),
+	NAMED_ARRAY_INDEX(MM_SWAPENTS),
+	NAMED_ARRAY_INDEX(MM_SHMEMPAGES),
+};
+
+static void check_discard_rss_cache(struct mm_struct *mm)
 {
-	if (unlikely(task != current))
-		return;
-	if (unlikely(task->rss_stat.events++ > TASK_RSS_EVENTS_THRESH))
-		sync_mm_rss(task->mm);
+	int cpu;
+	long cached_count[NR_MM_COUNTERS] = { 0 };
+	struct mm_struct *cpu_mm;
+
+	/* Arch will take care of cache invalidation */
+	if (!IS_ENABLED(CONFIG_ARCH_PCP_RSS_USE_CPUMASK)) {
+		/* Invalidate the RSS cache on every CPU */
+		for_each_possible_cpu(cpu) {
+			cpu_mm = READ_ONCE(per_cpu(cpu_rss_cache.mm, cpu));
+			if (__pcp_rss_mm_unmark(cpu_mm) != mm)
+				continue;
+
+			/*
+			 * If not being flusehd, try read-in the counter and mark it NULL,
+			 * once cache's mm is set NULL, counter are considered invalided.
+			 */
+			if (cpu_mm != __pcp_rss_mm_mark(cpu_mm)) {
+				long count[NR_MM_COUNTERS];
+
+				for (int i = 0; i < NR_MM_COUNTERS; i++)
+					count[i] = READ_ONCE(per_cpu(cpu_rss_cache.count[i], cpu));
+
+				/*
+				 * If successfully set to NULL, the owner CPU is not flushing it,
+				 * counters are uncommitted and untouched during this period, since
+				 * a dying mm won't be accouted anymore.
+				 */
+				cpu_mm = cmpxchg(&per_cpu(cpu_rss_cache.mm, cpu), mm, NULL);
+				if (cpu_mm == mm) {
+					for (int i = 0; i < NR_MM_COUNTERS; i++)
+						cached_count[i] += count[i];
+					continue;
+				}
+			}
+
+			/*
+			 * It's being flushed, just busy wait as the critial section
+			 * is really short.
+			 */
+			do {
+				cpu_relax();
+				cpu_mm = READ_ONCE(per_cpu(cpu_rss_cache.mm, cpu));
+			} while (cpu_mm == __pcp_rss_mm_mark(mm));
+		}
+	}
+
+	for (int i = 0; i < NR_MM_COUNTERS; i++) {
+		long val = atomic_long_read(&mm->rss_stat.count[i]);
+
+		if (!IS_ENABLED(CONFIG_ARCH_PCP_RSS_USE_CPUMASK)) {
+			val += cached_count[i];
+		}
+
+		if (unlikely(val)) {
+			pr_alert("BUG: Bad rss-counter state mm:%p type:%s val:%ld\n",
+				 mm, resident_page_types[i], val);
+		}
+	}
 }
-#else /* SPLIT_RSS_COUNTING */
 
-#define inc_mm_counter_fast(mm, member) inc_mm_counter(mm, member)
-#define dec_mm_counter_fast(mm, member) dec_mm_counter(mm, member)
-
-static void check_sync_rss_stat(struct task_struct *task)
+void check_discard_mm(struct mm_struct *mm)
 {
-}
+	BUILD_BUG_ON_MSG(ARRAY_SIZE(resident_page_types) != NR_MM_COUNTERS,
+			 "Please make sure 'struct resident_page_types[]' is updated as well");
 
-#endif /* SPLIT_RSS_COUNTING */
+	if (mm_pgtables_bytes(mm))
+		pr_alert("BUG: non-zero pgtables_bytes on freeing mm: %ld\n",
+				mm_pgtables_bytes(mm));
+
+#if defined(CONFIG_TRANSPARENT_HUGEPAGE) && !USE_SPLIT_PMD_PTLOCKS
+	VM_BUG_ON_MM(mm->pmd_huge_pte, mm);
+#endif
+
+	check_discard_rss_cache(mm);
+}
 
 /*
  * Note: this doesn't free the actual pages themselves. That
@@ -502,8 +695,6 @@ static inline void add_mm_rss_vec(struct mm_struct *mm, int *rss)
 {
 	int i;
 
-	if (current->mm == mm)
-		sync_mm_rss(mm);
 	for (i = 0; i < NR_MM_COUNTERS; i++)
 		if (rss[i])
 			add_mm_counter(mm, i, rss[i]);
@@ -4254,7 +4445,7 @@ vm_fault_t do_set_pmd(struct vm_fault *vmf, struct page *page)
 	if (write)
 		entry = maybe_pmd_mkwrite(pmd_mkdirty(entry), vma);
 
-	add_mm_counter(vma->vm_mm, mm_counter_file(page), HPAGE_PMD_NR);
+	add_mm_counter_fast(vma->vm_mm, mm_counter_file(page), HPAGE_PMD_NR);
 	page_add_file_rmap(page, vma, true);
 
 	/*
@@ -5130,9 +5321,6 @@ vm_fault_t handle_mm_fault(struct vm_area_struct *vma, unsigned long address,
 
 	count_vm_event(PGFAULT);
 	count_memcg_event_mm(vma->vm_mm, PGFAULT);
-
-	/* do counter updates before entering really critical section. */
-	check_sync_rss_stat(current);
 
 	if (!arch_vma_access_permitted(vma, flags & FAULT_FLAG_WRITE,
 					    flags & FAULT_FLAG_INSTRUCTION,

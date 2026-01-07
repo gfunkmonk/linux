@@ -598,6 +598,11 @@ void switch_mm_irqs_off(struct mm_struct *prev, struct mm_struct *next,
 		cond_mitigation(tsk);
 
 		/*
+		 * Flush RSS cache before clear up the bitmask
+		 */
+		switch_pcp_rss_cache_no_irq(next);
+
+		/*
 		 * Stop remote flushes for the previous mm.
 		 * Skip kernel threads; we never send init_mm TLB flushing IPIs,
 		 * but the bitmap manipulation can cause cache line contention.

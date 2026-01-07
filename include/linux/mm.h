@@ -2034,23 +2034,14 @@ static inline bool get_user_page_fast_only(unsigned long addr,
 {
 	return get_user_pages_fast_only(addr, 1, gup_flags, pagep) == 1;
 }
+
+void check_discard_mm(struct mm_struct *mm);
+
 /*
  * per-process(per-mm_struct) statistics.
  */
-static inline unsigned long get_mm_counter(struct mm_struct *mm, int member)
-{
-	long val = atomic_long_read(&mm->rss_stat.count[member]);
-
-#ifdef SPLIT_RSS_COUNTING
-	/*
-	 * counter is updated in asynchronous manner and may go to minus.
-	 * But it's never be expected number for users.
-	 */
-	if (val < 0)
-		val = 0;
-#endif
-	return (unsigned long)val;
-}
+unsigned long get_mm_counter(struct mm_struct *mm, int member);
+unsigned long get_mm_rss(struct mm_struct *mm);
 
 void mm_trace_rss_stat(struct mm_struct *mm, int member, long count);
 
@@ -2090,13 +2081,6 @@ static inline int mm_counter(struct page *page)
 	return mm_counter_file(page);
 }
 
-static inline unsigned long get_mm_rss(struct mm_struct *mm)
-{
-	return get_mm_counter(mm, MM_FILEPAGES) +
-		get_mm_counter(mm, MM_ANONPAGES) +
-		get_mm_counter(mm, MM_SHMEMPAGES);
-}
-
 static inline unsigned long get_mm_hiwater_rss(struct mm_struct *mm)
 {
 	return max(mm->hiwater_rss, get_mm_rss(mm));
@@ -2134,14 +2118,6 @@ static inline void setmax_mm_hiwater_rss(unsigned long *maxrss,
 	if (*maxrss < hiwater_rss)
 		*maxrss = hiwater_rss;
 }
-
-#if defined(SPLIT_RSS_COUNTING)
-void sync_mm_rss(struct mm_struct *mm);
-#else
-static inline void sync_mm_rss(struct mm_struct *mm)
-{
-}
-#endif
 
 #ifndef CONFIG_ARCH_HAS_PTE_SPECIAL
 static inline int pte_special(pte_t pte)
