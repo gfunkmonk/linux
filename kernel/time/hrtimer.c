@@ -2434,7 +2434,6 @@ long __sched schedule_msec_hrtimeout(long timeout)
 EXPORT_SYMBOL(schedule_msec_hrtimeout);
 
 #define USECS_PER_SEC 1000000
-extern int hrtimer_granularity_us;
 
 static inline long schedule_usec_hrtimeout(long timeout)
 {
@@ -2473,6 +2472,7 @@ static inline long schedule_usec_hrtimeout(long timeout)
 	return timeout < 0 ? 0 : timeout;
 }
 
+int __read_mostly hrtimer_granularity_us = 100;
 int __read_mostly hrtimeout_min_us = 500;
 
 long __sched schedule_min_hrtimeout(void)

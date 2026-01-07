@@ -190,7 +190,7 @@ int clockevents_tick_resume(struct clock_event_device *dev)
 
 #ifdef CONFIG_GENERIC_CLOCKEVENTS_MIN_ADJUST
 
-int __read_mostly hrtimer_granularity_us = 100;
+extern int hrtimer_granularity_us;
 /* Limit min_delta to a jiffie */
 #define MIN_DELTA_LIMIT		(hrtimer_granularity_us * NSEC_PER_USEC)
 
