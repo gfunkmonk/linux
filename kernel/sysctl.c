@@ -1597,7 +1597,6 @@ static struct ctl_table kern_table[] = {
 	{
 		.procname	= "sched_interactivity_factor",
 		.data		= &interactivity_factor,
-	{
 		.procname       = "hrtimer_granularity_us",
 		.data           = &hrtimer_granularity_us,
 		.maxlen         = sizeof(int),
