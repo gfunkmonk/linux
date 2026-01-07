@@ -43,12 +43,4 @@ config BFQ_CGROUP_DEBUG
 	Enable some debugging help. Currently it exports additional stat
 	files in a cgroup which can be useful for debugging.
 
-config MQ_IOSCHED_I10
-	tristate "i10 I/O scheduler"
-	default y
-	help
-	  The i10 I/O Scheduler supports batching at BLK-MQ.
-	  Any device driver that benefits from batching
-	  (e.g., NVMe-over-TCP) can use this scheduler.
-
 endmenu
