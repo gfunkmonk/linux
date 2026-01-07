@@ -699,17 +699,59 @@ void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 		bfq_activate_bfqq(bfqd, bfqq);
 	}
 
-	if (!bfqd->in_service_queue && !bfqd->rq_in_driver)
+	if (!bfqd->in_service_queue && !bfqd->tot_rq_in_driver)
 		bfq_schedule_dispatch(bfqd);
 	/* release extra ref taken above, bfqq may happen to be freed now */
 	bfq_put_queue(bfqq);
 }
 
+static void bfq_sync_bfqq_move(struct bfq_data *bfqd,
+			       struct bfq_queue *sync_bfqq,
+			       struct bfq_io_cq *bic,
+			       struct bfq_group *bfqg,
+			       unsigned int act_idx)
+{
+	if (!sync_bfqq->new_bfqq && !bfq_bfqq_coop(sync_bfqq)) {
+		/* We are the only user of this bfqq, just move it */
+		if (sync_bfqq->entity.sched_data != &bfqg->sched_data)
+			bfq_bfqq_move(bfqd, sync_bfqq, bfqg);
+	} else {
+		struct bfq_queue *bfqq;
+
+		/*
+		 * The queue was merged to a different queue. Check
+		 * that the merge chain still belongs to the same
+		 * cgroup.
+		 */
+		for (bfqq = sync_bfqq; bfqq; bfqq = bfqq->new_bfqq)
+			if (bfqq->entity.sched_data !=
+			    &bfqg->sched_data)
+				break;
+		if (bfqq) {
+			/*
+			 * Some queue changed cgroup so the merge is
+			 * not valid anymore. We cannot easily just
+			 * cancel the merge (by clearing new_bfqq) as
+			 * there may be other processes using this
+			 * queue and holding refs to all queues below
+			 * sync_bfqq->new_bfqq. Similarly if the merge
+			 * already happened, we need to detach from
+			 * bfqq now so that we cannot merge bio to a
+			 * request from the old cgroup.
+			 */
+			bfq_put_cooperator(sync_bfqq);
+			bfq_release_process_ref(bfqd, sync_bfqq);
+			bic_set_bfqq(bic, NULL, 1, act_idx);
+		}
+	}
+}
+
+
 /**
- * __bfq_bic_change_cgroup - move @bic to @cgroup.
+ * __bfq_bic_change_cgroup - move @bic to @bfqg.
  * @bfqd: the queue descriptor.
  * @bic: the bic to move.
- * @blkcg: the blk-cgroup to move to.
+ * @bfqg: the group to move to.
  *
  * Move bic to blkcg, assuming that bfqd->lock is held; which makes
  * sure that the reference to cgroup is valid across the call (see
@@ -719,53 +761,24 @@ static void *__bfq_bic_change_cgroup(struct bfq_data *bfqd,
 				     struct bfq_io_cq *bic,
 				     struct bfq_group *bfqg)
 {
-	struct bfq_queue *async_bfqq = bic_to_bfqq(bic, 0);
-	struct bfq_queue *sync_bfqq = bic_to_bfqq(bic, 1);
 	struct bfq_entity *entity;
+	unsigned int act_idx;
 
-	if (async_bfqq) {
-		entity = &async_bfqq->entity;
+	for (act_idx = 0; act_idx < bfqd->num_ia_ranges; act_idx++) {
+		struct bfq_queue *async_bfqq = bic_to_bfqq(bic, 0, act_idx);
+		struct bfq_queue *sync_bfqq = bic_to_bfqq(bic, 1, act_idx);
 
-		if (entity->sched_data != &bfqg->sched_data) {
-			bic_set_bfqq(bic, NULL, 0);
-			bfq_release_process_ref(bfqd, async_bfqq);
-		}
-	}
+		if (async_bfqq) {
+			entity = &async_bfqq->entity;
 
-	if (sync_bfqq) {
-		if (!sync_bfqq->new_bfqq && !bfq_bfqq_coop(sync_bfqq)) {
-			/* We are the only user of this bfqq, just move it */
-			if (sync_bfqq->entity.sched_data != &bfqg->sched_data)
-				bfq_bfqq_move(bfqd, sync_bfqq, bfqg);
-		} else {
-			struct bfq_queue *bfqq;
-
-			/*
-			 * The queue was merged to a different queue. Check
-			 * that the merge chain still belongs to the same
-			 * cgroup.
-			 */
-			for (bfqq = sync_bfqq; bfqq; bfqq = bfqq->new_bfqq)
-				if (bfqq->entity.sched_data !=
-				    &bfqg->sched_data)
-					break;
-			if (bfqq) {
-				/*
-				 * Some queue changed cgroup so the merge is
-				 * not valid anymore. We cannot easily just
-				 * cancel the merge (by clearing new_bfqq) as
-				 * there may be other processes using this
-				 * queue and holding refs to all queues below
-				 * sync_bfqq->new_bfqq. Similarly if the merge
-				 * already happened, we need to detach from
-				 * bfqq now so that we cannot merge bio to a
-				 * request from the old cgroup.
-				 */
-				bfq_put_cooperator(sync_bfqq);
-				bfq_release_process_ref(bfqd, sync_bfqq);
-				bic_set_bfqq(bic, NULL, 1);
+			if (entity->sched_data != &bfqg->sched_data) {
+				bic_set_bfqq(bic, NULL, 0, act_idx);
+				bfq_release_process_ref(bfqd, async_bfqq);
 			}
 		}
+
+		if (sync_bfqq)
+			bfq_sync_bfqq_move(bfqd, sync_bfqq, bic, bfqg, act_idx);
 	}
 
 	return bfqg;
@@ -863,6 +876,7 @@ static void bfq_flush_idle_tree(struct bfq_service_tree *st)
  * @bfqd: the device data structure with the root group.
  * @entity: the entity to move, if entity is a leaf; or the parent entity
  *	    of an active leaf entity to move, if entity is not a leaf.
+ * @ioprio_class: I/O priority class to reparent.
  */
 static void bfq_reparent_leaf_entity(struct bfq_data *bfqd,
 				     struct bfq_entity *entity,
@@ -892,6 +906,7 @@ static void bfq_reparent_leaf_entity(struct bfq_data *bfqd,
  * @bfqd: the device data structure with the root group.
  * @bfqg: the group to move from.
  * @st: the service tree to start the search from.
+ * @ioprio_class: I/O priority class to reparent.
  */
 static void bfq_reparent_active_queues(struct bfq_data *bfqd,
 				       struct bfq_group *bfqg,
@@ -1470,8 +1485,6 @@ struct bfq_group *bfqq_group(struct bfq_queue *bfqq)
 {
 	return bfqq->bfqd->root_group;
 }
-
-void bfqg_and_blkg_get(struct bfq_group *bfqg) {}
 
 void bfqg_and_blkg_put(struct bfq_group *bfqg) {}
 

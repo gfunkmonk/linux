@@ -172,4 +172,13 @@ config LEDS_TRIGGER_ACTPWR
 	  on for at least half of the time.
 	  If unsure, say N.
 
+config LEDS_TRIGGER_BLKDEV
+	tristate "LED Trigger for block devices"
+	depends on BLOCK
+	help
+	  The blkdev LED trigger allows LEDs to be controlled by block device
+	  activity (reads and writes).
+
+	  See Documentation/leds/ledtrig-blkdev.rst.
+
 endif # LEDS_TRIGGERS
