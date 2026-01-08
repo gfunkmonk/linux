@@ -56,10 +56,11 @@ ccflags-y += -Wno-int-in-bool-context -Wno-missing-prototypes -Wno-missing-decla
 endif
 
 ############# SOURCE & HEADERS #############
-src := $(PWD)
-ksrc := $(srctree)/drivers/staging/rtl8723du/$(src)
 export TopDIR ?= $(shell pwd)
-ccflags-y += -I$(ksrc)/hal/phydm -I$(ksrc)/hal -I$(ksrc)/platform  -I$(ksrc)/include -I$(ksrc)/hal/btc
+
+src := $(PWD)/drivers/staging/rtl8723du/
+
+ccflags-y += -I$(src)/hal/phydm -I$(src)/hal -I$(src)/platform  -I$(src)/include -I$(src)/hal/btc
 
 ########################## AUTOCFG ############################
 CONFIG_AUTOCFG_CP = n
