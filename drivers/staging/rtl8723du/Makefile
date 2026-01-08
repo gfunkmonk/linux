@@ -57,7 +57,7 @@ endif
 
 ############# SOURCE & HEADERS #############
 src := $(PWD)
-ksrc := $(srctree)/$(src)
+ksrc := $(srctree)/drivers/staging/rtl8723du/$(src)
 export TopDIR ?= $(shell pwd)
 ccflags-y += -I$(ksrc)/hal/phydm -I$(ksrc)/hal -I$(ksrc)/platform  -I$(ksrc)/include -I$(ksrc)/hal/btc
 
