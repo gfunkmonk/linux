@@ -57,8 +57,9 @@ endif
 
 ############# SOURCE & HEADERS #############
 src := $(PWD)
+ksrc := $(srctree)/$(src)
 export TopDIR ?= $(shell pwd)
-ccflags-y += -I$(src)/hal/phydm -I$(src)/hal  -I$(src)/platform  -I$(src)/include -I$(src)/hal/btc
+ccflags-y += -I$(ksrc)/hal/phydm -I$(ksrc)/hal -I$(ksrc)/platform  -I$(ksrc)/include -I$(ksrc)/hal/btc
 
 ########################## AUTOCFG ############################
 CONFIG_AUTOCFG_CP = n
