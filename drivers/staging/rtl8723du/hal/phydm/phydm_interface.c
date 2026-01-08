@@ -725,11 +725,11 @@ void odm_initialize_timer(struct dm_struct *dm, struct phydm_timer_list *timer,
 void odm_cancel_timer(struct dm_struct *dm, struct phydm_timer_list *timer)
 {
 #if (DM_ODM_SUPPORT_TYPE & ODM_AP)
-	del_timer(timer);
+	_cancel_timer_ex(timer);
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE) && defined(DM_ODM_CE_MAC80211)
-	del_timer(timer);
+	_cancel_timer_ex(timer);
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE) && defined(DM_ODM_CE_MAC80211_V2)
-	del_timer(&timer->timer);
+	_cancel_timer_ex(timer);
 #elif (DM_ODM_SUPPORT_TYPE & ODM_CE)
 	_cancel_timer_ex(timer);
 #elif (DM_ODM_SUPPORT_TYPE & ODM_WIN)

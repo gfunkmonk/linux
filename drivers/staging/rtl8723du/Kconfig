@@ -1,11 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0
 config RTL8723DU
-	tristate "Realtek RTL8723DU USB Wireless LAN NIC driver"
-	depends on WLAN && USB && CFG80211
-	depends on m
-	select CFG80211_WEXT
-	select CRYPTO
-	select CRYPTO_LIB_ARC4
-	help
-	This option enables support for RTL8723DU USB drivers.
-	If built as a module, it will be called 8723du.
+        tristate "Realtek 8723DU USB WiFi"
+        depends on USB && WLAN && CFG80211
+        help
+          Select this option will enable support for 8723DU chipset
+          802.11n USB wireless network adapter.
