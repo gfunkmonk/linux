@@ -39,7 +39,7 @@ extern void reweight_entity(
 #else /* CONFIG_SCHED_ALT */
 /* Stub implementations for alternative scheduler */
 static inline void task_fork_bore(struct task_struct *p, struct task_struct *parent,
-													u64 clone_flags, u64 now) { }
+                                  u64 clone_flags, u64 now) { }
 static inline void sched_init_bore(void) { }
 static inline void reset_task_bore(struct task_struct *p) { }
 #endif /* CONFIG_SCHED_ALT */
