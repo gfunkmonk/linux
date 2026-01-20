@@ -12,6 +12,7 @@
 
 #define SCHED_BORE_VERSION  "6.5.5"
 
+#ifndef CONFIG_SCHED_ALT
 extern u8   __read_mostly sched_bore;
 extern u8   __read_mostly sched_burst_inherit_type;
 extern u8   __read_mostly sched_burst_smoothness;
@@ -35,5 +36,12 @@ extern int  sched_burst_inherit_type_update_handler(const struct ctl_table *tabl
 
 extern void reweight_entity(
 	struct cfs_rq *cfs_rq, struct sched_entity *se, unsigned long weight);
+#else /* CONFIG_SCHED_ALT */
+/* Stub implementations for alternative scheduler */
+static inline void task_fork_bore(struct task_struct *p, struct task_struct *parent,
+                                  u64 clone_flags, u64 now) { }
+static inline void sched_init_bore(void) { }
+static inline void reset_task_bore(struct task_struct *p) { }
+#endif /* CONFIG_SCHED_ALT */
 
 #endif /* _KERNEL_SCHED_BORE_H */
