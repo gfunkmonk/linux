@@ -2275,6 +2275,9 @@
                           on whether or not the hardware managed P-states
                           (HWP) feature has been enabled in the processor
                           and possibly on the processor model.
+			enable
+			  Enable intel_pstate in-case "disable" was passed
+			  previously in the kernel boot parameters
 			passive
 			  Use intel_pstate as a scaling driver, but configure it
 			  to work with generic cpufreq governors (instead of
