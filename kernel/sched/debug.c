@@ -560,7 +560,9 @@ static __init int sched_init_debug(void)
 #endif
 
 #ifdef CONFIG_SCHED_BORE
+#if defined(CONFIG_SMP) && !defined(CONFIG_SCHED_ALT)
 	debugfs_create_file("min_base_slice_ns", 0644, debugfs_sched, NULL, &sched_min_base_slice_fops);
+#endif
 	debugfs_create_u32("base_slice_ns", 0444, debugfs_sched, &sysctl_sched_base_slice);
 #else /* !CONFIG_SCHED_BORE */
 	debugfs_create_u32("base_slice_ns", 0644, debugfs_sched, &sysctl_sched_base_slice);
