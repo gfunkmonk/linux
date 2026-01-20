@@ -44,6 +44,7 @@ extern void __aeabi_lmul(void);
 extern void __aeabi_uidiv(void);
 extern void __aeabi_uidivmod(void);
 extern void __aeabi_ulcmp(void);
+extern void __aeabi_uldivmod(void);
 
 extern void fpundefinstr(void);
 
@@ -141,6 +142,7 @@ EXPORT_SYMBOL(__aeabi_lmul);
 EXPORT_SYMBOL(__aeabi_uidiv);
 EXPORT_SYMBOL(__aeabi_uidivmod);
 EXPORT_SYMBOL(__aeabi_ulcmp);
+EXPORT_SYMBOL(__aeabi_uldivmod);
 #endif
 
 	/* bitops */
