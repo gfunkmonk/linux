@@ -76,6 +76,7 @@ config SCHED_HRTICK
 
 config MIN_BASE_SLICE_NS
 	int "Default value for min_base_slice_ns"
+	depends on SCHED_BORE
 	default 2000000
 	help
 	 The BORE Scheduler automatically calculates the optimal base
