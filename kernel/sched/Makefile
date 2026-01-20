@@ -34,7 +34,7 @@ obj-$(CONFIG_SCHED_DEBUG) += alt_debug.o
 else
 obj-y += core.o
 obj-y += fair.o
+obj-$(CONFIG_SCHED_BORE) += bore.o
 endif
 obj-y += build_policy.o
 obj-y += build_utility.o
-obj-$(CONFIG_SCHED_BORE) += bore.o
