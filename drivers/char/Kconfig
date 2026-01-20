@@ -432,4 +432,6 @@ config RASPBERRYPI_GPIOMEM
                 on the board. Calling mmap(/dev/gpiomem) will map the GPIO
                 register page to the user's pointer.
 
+source "drivers/char/lrng/Kconfig"
+
 endmenu
