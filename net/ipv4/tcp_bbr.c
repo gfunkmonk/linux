@@ -500,7 +500,7 @@ static u32 bbr_tso_segs_generic(struct sock *sk, unsigned int mss_now,
 	}
 
 	bytes = min_t(u32, bytes, gso_max_size - 1 - MAX_TCP_HEADER);
-	segs = max_t(u32, bytes / mss_now,
+	segs = max_t(u32, div_u64(bytes, mss_now),
 		     sock_net(sk)->ipv4.sysctl_tcp_min_tso_segs);
 	return segs;
 }
@@ -591,7 +591,7 @@ static u32 bbr_bdp(struct sock *sk, u32 bw, int gain)
 	/* Apply a gain to the given value, remove the BW_SCALE shift, and
 	 * round the value up to avoid a negative feedback loop.
 	 */
-	bdp = (((w * gain) >> BBR_SCALE) + BW_UNIT - 1) / BW_UNIT;
+	bdp = div_u64(((w * gain) >> BBR_SCALE) + BW_UNIT - 1, BW_UNIT);
 
 	return bdp;
 }
@@ -673,8 +673,8 @@ static u32 bbr_ack_aggregation_cwnd(struct sock *sk)
 	u32 max_aggr_cwnd, aggr_cwnd = 0;
 
 	if (bbr_param(sk, extra_acked_gain)) {
-		max_aggr_cwnd = ((u64)bbr_bw(sk) * bbr_extra_acked_max_us)
-				/ BW_UNIT;
+		max_aggr_cwnd = div_u64((u64)bbr_bw(sk) * bbr_extra_acked_max_us,
+					BW_UNIT);
 		aggr_cwnd = (bbr_param(sk, extra_acked_gain) * bbr_extra_acked(sk))
 			     >> BBR_SCALE;
 		aggr_cwnd = min(aggr_cwnd, max_aggr_cwnd);
@@ -828,7 +828,7 @@ static void bbr_update_ack_aggregation(struct sock *sk,
 	/* Compute how many packets we expected to be delivered over epoch. */
 	epoch_us = tcp_stamp_us_delta(tp->delivered_mstamp,
 				      bbr->ack_epoch_mstamp);
-	expected_acked = ((u64)bbr_bw(sk) * epoch_us) / BW_UNIT;
+	expected_acked = div_u64((u64)bbr_bw(sk) * epoch_us, BW_UNIT);
 
 	/* Reset the aggregation epoch if ACK rate is below expected rate or
 	 * significantly large no. of ack received since epoch (potentially
