@@ -136,27 +136,39 @@ jobs:
           mkdir -p $(pwd)/output
           echo "Building for architecture: ${{ inputs.arch }}"
 
-      - name: 🅲🅲🅰🅲🅷🅴 🅴🅽🆅🅸🆁🅾🅽🅼🅴🅽🆃 🆅🅰🆁🅸🅰🅱🅻🅴🆂 
+      - name: 🅲🅲🅰🅲🅷🅴 🅴🅽🆅🅸🆁🅾🅽🅼🅴🅽🆃 🆅🅰🆁🅸🅰🅱🅻🅴🆂
         run: |
-          cat >> $GITHUB_ENV << 'EOF'
-          CCACHE_SLOPPINESS=file_macro,locale,time_macros
-          CCACHE_NOHASHDIR=true
-          CCACHE_COMPRESS=1
-          CCACHE_COMPRESSLEVEL=6
-          CCACHE_DEPEND=1
-          CCACHE_FILE_CLONE=true
-          CCACHE_NOHARDLINK=true
-          CCACHE_INODECACHE=true
-          CCACHE_NORECACHE=true
-          CCACHE_NLEVELS=4
-          CCACHE_COMPILERCHECK=content
-          EOF
+          #cat >> $GITHUB_ENV << 'EOF'
+          #CCACHE_SLOPPINESS=file_macro,locale,time_macros
+          #CCACHE_NOHASHDIR=true
+          #CCACHE_COMPRESS=1
+          #CCACHE_COMPRESSLEVEL=6
+          #CCACHE_DEPEND=1
+          #CCACHE_FILE_CLONE=true
+          #CCACHE_NOHARDLINK=true
+          #CCACHE_INODECACHE=true
+          #CCACHE_NORECACHE=true
+          #CCACHE_NLEVELS=4
+          #CCACHE_COMPILERCHECK=content
+          #EOF
+
+          echo "CCACHE_NLEVELS=4" >> $GITHUB_ENV
 
           # Link Compilers to /usr/bin/ccache
           sudo ln -s /usr/bin/ccache /usr/local/bin/aarch64-linux-gnu-gcc
           sudo ln -s /usr/bin/ccache /usr/local/bin/aarch64-linux-gnu-g++
+          sudo ln -s /usr/bin/ccache /usr/local/bin/aarch64-linux-gnu-cpp
           sudo ln -s /usr/bin/ccache /usr/local/bin/arm-linux-gnueabihf-gcc
           sudo ln -s /usr/bin/ccache /usr/local/bin/arm-linux-gnueabihf-g++
+          sudo ln -s /usr/bin/ccache /usr/local/bin/arm-linux-gnueabihf-cpp
+          sudo ln -s /usr/bin/ccache /usr/local/bin/gcc
+          sudo ln -s /usr/bin/ccache /usr/local/bin/g++
+          sudo ln -s /usr/bin/ccache /usr/local/bin/clang
+          sudo ln -s /usr/bin/ccache /usr/local/bin/clang++
+          sudo ln -s /usr/bin/ccache /usr/local/bin/cpp
+          sudo ln -s /usr/bin/ccache /usr/local/bin/c++
+          sudo ln -s /usr/bin/ccache /usr/local/bin/cc
+
           # Setup CCACHE Dir
           sudo mkdir -p /mnt/ccache
           sudo chown -R $USER:$USER /mnt/ccache
@@ -166,20 +178,34 @@ jobs:
           echo "CCACHE Environment set!"
 
       - name: 🏎 🅴🅽🅰🅱🅻🅴 🅲🅲🅰🅲🅷🅴 🏁
-        uses: hendrikmuhs/ccache-action@v1.2
+        uses: Chocobo1/setup-ccache-action@v1
         with:
-          create-symlink: 'true'
-          #key: kernel-build-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('Makefile', 'arch/*/Makefile', '.config') }}
-          # Key is based on OS and a hash of the kernel source's main Makefile (or a specific config file)
-          key: ${{ runner.os }}-ccache-${{ hashFiles('Makefile') }}
-          max-size: '10000MB'
-          #restore-keys: |
-          #  kernel-build-${{ runner.os }}-${{ inputs.arch }}-
-          #  kernel-build-${{ runner.os }}-
-          restore-keys: |
-            ${{ runner.os }}-ccache-
-          verbose: 2
-          save: true
+          update_packager_index: false
+          install_ccache: false
+          prepend_symlinks_to_path: false
+          ccache_options: |
+            max_size=10000M
+            compression=true
+            compression_level=6
+            hash_dir=false
+            sloppiness=file_macro,locale,time_macros
+            file_clone=true
+            hard_link=false
+            inode_cache=true
+            recache=false
+            direct_mode=true
+            depend_mode=true
+            compiler_check=content
+
+      #  uses: hendrikmuhs/ccache-action@v1.2
+      #  with:
+      #    create-symlink: 'true'
+      #    key: ${{ runner.os }}-ccache-${{ hashFiles('Makefile') }}
+      #    max-size: '10000MB'
+      #    restore-keys: |
+      #      ${{ runner.os }}-ccache-
+      #    verbose: 2
+      #    save: true
 
       #- name: 🔐 🄢🄢🄗 ⒱⒤⒜ 🄒⒧⒪⒰⒟⒡⒧⒜⒭⒠
       #  uses: valeriangalliat/action-sshd-cloudflared@v1
