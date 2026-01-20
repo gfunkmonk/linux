@@ -1115,8 +1115,20 @@ config HZ_300
 config HZ_500
 	bool "500 Hz"
 
+config HZ_750
+	bool "750 Hz"
+
+config HZ_833
+	bool "833 Hz"
+
 config HZ_1000
 	bool "1000 Hz"
+
+config HZ_1666
+	bool "1666 Hz"
+
+config HZ_2000
+	bool "2000 Hz"
 
 endchoice
 
@@ -1128,7 +1140,11 @@ config HZ
 	default 250 if HZ_250
 	default 300 if HZ_300
 	default 500 if HZ_500
+	default 750 if HZ_750
+	default 833 if HZ_833
 	default 1000
+	default 1666 if HZ_1666
+	default 2000 if HZ_2000
 
 config SCHED_HRTICK
 	def_bool HIGH_RES_TIMERS
