@@ -9,7 +9,7 @@ on:
         description: 'Clear Disk Space'
         required: true
         type: boolean
-        default: false
+        default: true
       swapspace:
         description: 'Add Swap'
         required: true
@@ -22,7 +22,7 @@ on:
         options:
           - arm
           - arm64
-        default: arm64
+        default: arm
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -46,7 +46,7 @@ jobs:
         uses: jlumbroso/free-disk-space@main
         with:
           swap-storage: false
-          large-packages: false
+          large-packages: true
           tool-cache: false
           android: true
           dotnet: true
