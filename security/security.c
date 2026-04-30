@@ -1406,6 +1406,7 @@ void security_path_post_mknod(struct mnt_idmap *idmap, struct dentry *dentry)
 		return;
 	call_void_hook(path_post_mknod, idmap, dentry);
 }
+EXPORT_SYMBOL_GPL(security_path_post_mknod);
 
 /**
  * security_path_mkdir() - Check if creating a new directory is allowed
@@ -1441,6 +1442,7 @@ int security_path_rmdir(const struct path *dir, struct dentry *dentry)
 		return 0;
 	return call_int_hook(path_rmdir, dir, dentry);
 }
+EXPORT_SYMBOL_GPL(security_path_rmdir);
 
 /**
  * security_path_unlink() - Check if removing a hard link is allowed
@@ -1476,6 +1478,7 @@ int security_path_symlink(const struct path *dir, struct dentry *dentry,
 		return 0;
 	return call_int_hook(path_symlink, dir, dentry, old_name);
 }
+EXPORT_SYMBOL_GPL(security_path_symlink);
 
 /**
  * security_path_link - Check if creating a hard link is allowed
@@ -1494,6 +1497,7 @@ int security_path_link(struct dentry *old_dentry, const struct path *new_dir,
 		return 0;
 	return call_int_hook(path_link, old_dentry, new_dir, new_dentry);
 }
+EXPORT_SYMBOL_GPL(security_path_link);
 
 /**
  * security_path_rename() - Check if renaming a file is allowed
@@ -1555,6 +1559,7 @@ int security_path_chmod(const struct path *path, umode_t mode)
 		return 0;
 	return call_int_hook(path_chmod, path, mode);
 }
+EXPORT_SYMBOL_GPL(security_path_chmod);
 
 /**
  * security_path_chown() - Check if changing the file's owner/group is allowed
@@ -1572,6 +1577,7 @@ int security_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
 		return 0;
 	return call_int_hook(path_chown, path, uid, gid);
 }
+EXPORT_SYMBOL_GPL(security_path_chown);
 
 /**
  * security_path_chroot() - Check if changing the root directory is allowed
@@ -1816,6 +1822,7 @@ int security_inode_permission(struct inode *inode, int mask)
 		return 0;
 	return call_int_hook(inode_permission, inode, mask);
 }
+EXPORT_SYMBOL_GPL(security_inode_permission);
 
 /**
  * security_inode_setattr() - Check if setting file attributes is allowed
@@ -2366,6 +2373,7 @@ int security_file_permission(struct file *file, int mask)
 {
 	return call_int_hook(file_permission, file, mask);
 }
+EXPORT_SYMBOL_GPL(security_file_permission);
 
 /**
  * security_file_alloc() - Allocate and init a file's LSM blob
@@ -2668,6 +2676,7 @@ int security_file_truncate(struct file *file)
 {
 	return call_int_hook(file_truncate, file);
 }
+EXPORT_SYMBOL_GPL(security_file_truncate);
 
 /**
  * security_task_alloc() - Allocate a task's LSM blob

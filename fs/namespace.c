@@ -2284,6 +2284,7 @@ const struct path *collect_paths(const struct path *path,
 		path_get(p);
 	return res;
 }
+EXPORT_SYMBOL_GPL(collect_paths);
 
 void drop_collected_paths(const struct path *paths, const struct path *prealloc)
 {
@@ -2292,6 +2293,7 @@ void drop_collected_paths(const struct path *paths, const struct path *prealloc)
 	if (paths != prealloc)
 		kfree(paths);
 }
+EXPORT_SYMBOL_GPL(drop_collected_paths);
 
 static struct mnt_namespace *alloc_mnt_ns(struct user_namespace *, bool);
 
@@ -6090,6 +6092,7 @@ bool our_mnt(struct vfsmount *mnt)
 {
 	return check_mnt(real_mount(mnt));
 }
+EXPORT_SYMBOL_GPL(our_mnt);
 
 bool current_chrooted(void)
 {

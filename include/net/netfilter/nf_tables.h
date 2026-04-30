@@ -458,6 +458,7 @@ struct nft_set_ext;
  *	@elemsize: element private size
  *
  *	Operations lookup, update and delete have simpler interfaces, are faster
+ *	Operations lookup, update and delete have simpler interfaces, are faster
  *	and currently only used in the packet path. All the rest are slower,
  *	control plane functions.
  */
@@ -515,6 +516,7 @@ struct nft_set_ops {
 	bool				abort_skip_removal;
 	unsigned int			elemsize;
 };
+
 
 /**
  *      struct nft_set_type - nf_tables set type

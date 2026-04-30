@@ -3472,6 +3472,7 @@ int tcp_disconnect(struct sock *sk, int flags)
 	tp->rx_opt.dsack = 0;
 	tp->rx_opt.num_sacks = 0;
 	tp->rcv_ooopack = 0;
+	tp->fast_ack_mode = 0;
 
 
 	/* Clean up fastopen related fields */
@@ -4252,6 +4253,8 @@ void tcp_get_info(struct sock *sk, struct tcp_info *info)
 		info->tcpi_options |= TCPI_OPT_ECN;
 	if (tp->ecn_flags & TCP_ECN_SEEN)
 		info->tcpi_options |= TCPI_OPT_ECN_SEEN;
+	if (tp->ecn_flags & TCP_ECN_LOW)
+		info->tcpi_options |= TCPI_OPT_ECN_LOW;
 	if (tp->syn_data_acked)
 		info->tcpi_options |= TCPI_OPT_SYN_DATA;
 	if (tp->tcp_usec_ts)
@@ -5282,7 +5285,7 @@ void __init tcp_init(void)
 	tcp_init_mem();
 	/* Set per-socket limits to no more than 1/128 the pressure threshold */
 	limit = nr_free_buffer_pages() << (PAGE_SHIFT - 7);
-	max_wshare = min(4UL*1024*1024, limit);
+	max_wshare = min(16UL*1024*1024, limit);
 	max_rshare = min(32UL*1024*1024, limit);
 
 	init_net.ipv4.sysctl_tcp_wmem[0] = PAGE_SIZE;
