@@ -270,6 +270,7 @@ do_kernel_address_page_fault(struct mm_struct *mm, unsigned long addr,
 		 * while interrupts are still disabled, then send a SIGSEGV.
 		 */
 		harden_branch_predictor();
+		local_irq_enable();
 		__do_user_fault(addr, fsr, SIGSEGV, SEGV_MAPERR, regs);
 	} else {
 		/*
@@ -591,6 +592,9 @@ do_sect_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 	 */
 	if (addr >= TASK_SIZE && user_mode(regs))
 		harden_branch_predictor();
+
+	if (interrupts_enabled(regs))
+		local_irq_enable();
 
 	do_bad_area(addr, fsr, regs);
 
