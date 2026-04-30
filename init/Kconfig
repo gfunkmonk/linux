@@ -547,6 +547,7 @@ config CROSS_MEMORY_ATTACH
 config AUDIT
 	bool "Auditing support"
 	depends on NET
+	default y
 	help
 	  Enable auditing infrastructure that can be used with another
 	  kernel subsystem, such as SELinux (which requires this for
@@ -1446,6 +1447,22 @@ config USER_NS_UNPRIVILEGED
 
 	  If unsure, say Y.
 
+config USER_NS_UNPRIVILEGED
+	bool "Allow unprivileged users to create namespaces"
+	depends on USER_NS
+	default n
+	help
+	  When disabled, unprivileged users will not be able to create
+	  new namespaces. Allowing users to create their own namespaces
+	  has been part of several recent local privilege escalation
+	  exploits, so if you need user namespaces but are
+	  paranoid^Wsecurity-conscious you want to disable this.
+
+	  This setting can be overridden at runtime via the
+	  kernel.unprivileged_userns_clone sysctl.
+
+	  If unsure, say N.
+
 config PID_NS
 	bool "PID Namespaces"
 	default y
@@ -1729,9 +1746,8 @@ menuconfig EXPERT
 	  Only use this if you really know what you are doing.
 
 config UID16
-	bool "Enable 16-bit UID system calls" if EXPERT
+	bool "Enable 16-bit UID system calls"
 	depends on HAVE_UID16 && MULTIUSER
-	default y
 	help
 	  This enables the legacy 16-bit UID syscall wrappers.
 
@@ -1917,8 +1933,7 @@ config SHMEM
 	  which may be appropriate on small systems without swap.
 
 config AIO
-	bool "Enable AIO support" if EXPERT
-	default y
+	bool "Enable AIO support"
 	help
 	  This option enables POSIX asynchronous I/O which may by used
 	  by some high performance threaded applications. Disabling

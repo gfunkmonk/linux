@@ -519,6 +519,9 @@ config SECTION_MISMATCH_WARN_ONLY
 
 	  If unsure, say Y.
 
+config DEBUG_WRITABLE_FUNCTION_POINTERS_VERBOSE
+	bool "Enable verbose reporting of writable function pointers"
+
 config DEBUG_FORCE_FUNCTION_ALIGN_64B
 	bool "Force all function address 64B aligned"
 	depends on EXPERT && (X86_64 || ARM64 || PPC32 || PPC64 || ARC || RISCV || S390)
@@ -683,7 +686,7 @@ config DEBUG_FS
 choice
 	prompt "Debugfs default access"
 	depends on DEBUG_FS
-	default DEBUG_FS_ALLOW_ALL
+	default DEBUG_FS_ALLOW_NONE
 	help
 	  This selects the default access restrictions for debugfs.
 	  It can be overridden with kernel command line option
@@ -1058,6 +1061,7 @@ menu "Debug Oops, Lockups and Hangs"
 
 config PANIC_ON_OOPS
 	bool "Panic on Oops"
+	default y
 	help
 	  Say Y here to enable the kernel to panic when it oopses. This
 	  has the same effect as setting oops=panic on the kernel command
@@ -1067,7 +1071,7 @@ config PANIC_ON_OOPS
 	  anything erroneous after an oops which could result in data
 	  corruption or other issues.
 
-	  Say N if unsure.
+	  Say Y if unsure.
 
 config PANIC_TIMEOUT
 	int "panic timeout"
@@ -1895,6 +1899,7 @@ config STRICT_DEVMEM
 config IO_STRICT_DEVMEM
 	bool "Filter I/O access to /dev/mem"
 	depends on STRICT_DEVMEM
+	default y
 	help
 	  If this option is disabled, you allow userspace (root) access to all
 	  io-memory regardless of whether a driver is actively using that
